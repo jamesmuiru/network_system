@@ -1,0 +1,2403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Enhanced Professional Network Analysis System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f6fa;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1001;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .main-container {
+      display: flex;
+      height: calc(100vh - 70px);
+    }
+
+    .sidebar {
+      width: 380px;
+      background: white;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+      transform: translateX(-350px);
+    }
+
+    .toggle-sidebar {
+      position: absolute;
+      right: 20px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .toggle-sidebar:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .panel {
+      border-bottom: 1px solid #eee;
+      padding: 20px;
+    }
+
+    .panel h3 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-group label {
+      display: block;
+      color: #555;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .control-group input,
+    .control-group select,
+    .control-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .control-group input:focus,
+    .control-group select:focus,
+    .control-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .control-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin: 5px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .metric-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px 0;
+      border-left: 4px solid #667eea;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .metric-label {
+      color: #666;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+
+    .analysis-results {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .node-list, .route-list, .facility-list, .timetable-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+
+    .node-item, .route-item, .facility-item, .timetable-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .node-item:hover, .route-item:hover, .facility-item:hover, .timetable-item:hover {
+      background: #f0f0f0;
+    }
+
+    .delete-btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .delete-btn:hover {
+      background: #c0392b;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-active { background: #27ae60; }
+    .status-inactive { background: #e74c3c; }
+    .status-pending { background: #f39c12; }
+
+    .legend {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      min-width: 200px;
+    }
+
+    .legend h4 {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+      font-size: 12px;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      display: none;
+      z-index: 2000;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .notification {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      z-index: 2000;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+    .notification.error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+    .notification.info { background: #cce7f0; color: #0c5460; border-left: 4px solid #17a2b8; }
+
+    .location-marker {
+      background: #e74c3c !important;
+      border: 3px solid white;
+      box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+    }
+
+    .service-area {
+      fill-opacity: 0.2;
+      stroke-opacity: 0.8;
+      stroke-width: 2;
+    }
+
+    .facility-marker {
+      background: #3498db !important;
+    }
+
+    .time-slot {
+      background: #ecf0f1;
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 4px;
+      border-left: 3px solid #3498db;
+    }
+
+    .time-slot.active {
+      background: #d5dbdb;
+      border-left-color: #27ae60;
+    }
+
+    .distance-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .distance-input {
+      flex: 1;
+    }
+
+    .tabs {
+      display: flex;
+      background: #ecf0f1;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.3s;
+    }
+
+    .tab.active {
+      background: #3498db;
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><i class="fas fa-network-wired"></i> Enhanced Professional Network Analysis System</h1>
+    <button class="toggle-sidebar" onclick="toggleSidebar()">
+      <i class="fas fa-bars"></i>
+    </button>
+  </div>
+
+  <div class="main-container">
+    <div class="sidebar" id="sidebar">
+      <!-- Location & Service Area Panel -->
+      <div class="panel">
+        <h3><i class="fas fa-map-marker-alt"></i> My Location & Service Area</h3>
+        
+        <div class="btn-group">
+          <button class="btn btn-success" onclick="setMyLocation()">
+            <i class="fas fa-crosshairs"></i> Set My Location
+          </button>
+          <button class="btn" onclick="showServiceArea()">
+            <i class="fas fa-circle"></i> Show Service Area
+          </button>
+        </div>
+
+        <div class="control-group">
+          <label>Service Radius (meters)</label>
+          <div class="distance-controls">
+            <input type="range" id="serviceRadius" min="100" max="10000" value="1000" 
+                   oninput="updateServiceRadius(this.value)" class="distance-input">
+            <span id="serviceRadiusValue">1000m</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>My Current Location</label>
+          <input type="text" id="myLocation" placeholder="Click 'Set My Location' or enter coordinates" readonly>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('facilities')">Facilities</button>
+          <button class="tab" onclick="switchTab('analysis')">Analysis</button>
+        </div>
+
+        <div id="facilities-tab" class="tab-content active">
+          <div class="control-group">
+            <label>Facility Type</label>
+            <select id="facilityType">
+              <option value="hospital">Hospitals</option>
+              <option value="school">Schools</option>
+              <option value="bank">Banks</option>
+              <option value="restaurant">Restaurants</option>
+              <option value="gas-station">Gas Stations</option>
+              <option value="pharmacy">Pharmacies</option>
+              <option value="police">Police Stations</option>
+              <option value="fire-station">Fire Stations</option>
+            </select>
+          </div>
+
+          <button class="btn" onclick="findNearestFacilities()">
+            <i class="fas fa-search"></i> Find Nearest Facilities
+          </button>
+
+          <div class="facility-list" id="facilityList">
+            <div style="padding: 20px; text-align: center; color: #666;">
+              Set your location and search for facilities.
+            </div>
+          </div>
+        </div>
+
+        <div id="analysis-tab" class="tab-content">
+          <button class="btn" onclick="analyzeServiceArea()">
+            <i class="fas fa-chart-area"></i> Analyze Service Area
+          </button>
+          <div class="analysis-results" id="serviceAreaResults">
+            <p style="color: #666; text-align: center;">Run service area analysis</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timetable Management Panel -->
+      <div class="panel">
+        <h3><i class="fas fa-clock"></i> Network Timetable</h3>
+        
+        <div class="control-group">
+          <label>Schedule Name</label>
+          <input type="text" id="scheduleName" placeholder="Enter schedule name">
+        </div>
+
+        <div class="control-group">
+          <label>Time Slot</label>
+          <input type="time" id="timeSlot">
+        </div>
+
+        <div class="control-group">
+          <label>Duration (minutes)</label>
+          <input type="number" id="duration" value="30" min="5" max="480">
+        </div>
+
+        <div class="control-group">
+          <label>Activity Description</label>
+          <textarea id="activityDescription" placeholder="Describe the network activity..."></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" onclick="addTimeSlot()">
+            <i class="fas fa-plus"></i> Add Time Slot
+          </button>
+          <button class="btn btn-warning" onclick="clearTimetable()">
+            <i class="fas fa-trash"></i> Clear All
+          </button>
+        </div>
+
+        <div class="timetable-list" id="timetableList">
+          <div style="padding: 20px; text-align: center; color: #666;">
+            No time slots added yet.
+          </div>
+        </div>
+      </div>
+
+      <!-- Enhanced Node Management Panel -->
+      <div class="panel">
+        <h3><i class="fas fa-circle-nodes"></i> Enhanced Node Management</h3>
+        
+        <div class="btn-group">
+          <button class="btn" onclick="toggleNodePlacement()">
+            <i class="fas fa-plus"></i> Add Nodes
+          </button>
+          <button class="btn btn-danger" onclick="toggleNodeDeletion()">
+            <i class="fas fa-minus"></i> Delete Nodes
+          </button>
+          <button class="btn" onclick="generateRandomNodes()">
+            <i class="fas fa-dice"></i> Random Nodes
+          </button>
+        </div>
+
+        <div class="control-group">
+          <label>Node Count for Generation</label>
+          <input type="number" id="nodeCount" value="10" min="5" max="50">
+        </div>
+
+        <div class="control-group">
+          <label>Node Type for New Nodes</label>
+          <select id="nodeType">
+            <option value="critical">Critical Nodes</option>
+            <option value="standard">Standard Nodes</option>
+            <option value="optimal">Optimal Nodes</option>
+          </select>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-danger" onclick="deleteSelectedNodes()">
+            <i class="fas fa-trash-alt"></i> Delete Selected
+          </button>
+          <button class="btn btn-danger" onclick="clearAllNodes()">
+            <i class="fas fa-trash"></i> Clear All
+          </button>
+        </div>
+
+        <div class="node-list" id="nodeList">
+          <div style="padding: 20px; text-align: center; color: #666;">
+            No nodes added yet. Click "Add Nodes" to start.
+          </div>
+        </div>
+      </div>
+
+      <!-- Network Configuration Panel -->
+      <div class="panel">
+        <h3><i class="fas fa-cog"></i> Network Configuration</h3>
+        
+        <div class="control-group">
+          <label>Analysis Type</label>
+          <select id="analysisType" onchange="changeAnalysisType()">
+            <option value="routing">Route Analysis</option>
+            <option value="coverage">Coverage Analysis</option>
+            <option value="clustering">Node Clustering</option>
+            <option value="connectivity">Connectivity Analysis</option>
+            <option value="flow">Network Flow</option>
+            <option value="shortest-path">Shortest Path</option>
+            <option value="service-area">Service Area Analysis</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>Network Type</label>
+          <select id="networkType">
+            <option value="transport">Transportation</option>
+            <option value="telecom">Telecommunications</option>
+            <option value="social">Social Network</option>
+            <option value="supply-chain">Supply Chain</option>
+            <option value="utility">Utility Network</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>Analysis Radius (meters)</label>
+          <div class="distance-controls">
+            <input type="range" id="analysisRadius" min="100" max="5000" value="1000" 
+                   oninput="updateRadiusValue(this.value)" class="distance-input">
+            <span id="radiusValue">1000m</span>
+          </div>
+        </div>
+
+        <button class="btn" onclick="runNetworkAnalysis()">
+          <i class="fas fa-play"></i> Run Analysis
+        </button>
+
+        <div class="analysis-results" id="analysisResults">
+          <p style="color: #666; text-align: center;">Run analysis to see results</p>
+        </div>
+      </div>
+
+      <!-- Network Metrics Panel -->
+      <div class="panel">
+        <h3><i class="fas fa-tachometer-alt"></i> Network Metrics</h3>
+        
+        <div class="metric-card">
+          <div class="metric-value" id="nodeCount-metric">0</div>
+          <div class="metric-label">Total Nodes</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-value" id="edgeCount-metric">0</div>
+          <div class="metric-label">Total Connections</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-value" id="avgDistance-metric">0 km</div>
+          <div class="metric-label">Avg Distance</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-value" id="networkDensity-metric">0%</div>
+          <div class="metric-label">Network Density</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend" id="legend">
+    <h4>Network Legend</h4>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #e74c3c;"></div>
+      My Location
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #3498db;"></div>
+      Facilities
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #f39c12;"></div>
+      Standard Nodes
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #27ae60;"></div>
+      Service Area
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>Processing network analysis...</div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+  <script>
+    // Global variables
+    let map;
+    let nodes = [];
+    let routes = [];
+    let facilities = [];
+    let timetable = [];
+    let myLocation = null;
+    let serviceArea = null;
+    let selectedNodes = [];
+    let isNodePlacementActive = false;
+    let isNodeDeletionActive = false;
+    let analysisRadius = 1000;
+    let serviceRadius = 1000;
+    let currentAnalysisType = 'routing';
+    let routingControl = null;
+    let myLocationMarker = null;
+
+    // Initialize the application
+    function initializeApp() {
+      // Initialize map
+      map = L.map('map').setView([-1.286389, 36.817223], 12);
+      
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Add click handler for node placement and deletion
+      map.on('click', handleMapClick);
+
+      // Try to get user's location
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setMyLocationCoords(lat, lng);
+            map.setView([lat, lng], 14);
+            showNotification('Your location detected automatically!', 'success');
+          },
+          (error) => {
+            console.log('Geolocation error:', error);
+            showNotification('Could not detect location. Please set manually.', 'info');
+          }
+        );
+      }
+
+      // Update metrics
+      updateNetworkMetrics();
+      showNotification('Enhanced Network Analysis System initialized!', 'success');
+    }
+
+    // Handle map clicks for node placement and deletion
+    function handleMapClick(e) {
+      if (isNodePlacementActive) {
+        const nodeType = document.getElementById('nodeType').value;
+        addNode(e.latlng, nodeType);
+      } else if (isNodeDeletionActive) {
+        // Find if click is near any node
+        const clickedNode = findNearestNode(e.latlng, 50); // 50 meter threshold
+        if (clickedNode) {
+          removeNode(clickedNode.id);
+        }
+      }
+    }
+
+    // Find nearest node to a point
+    function findNearestNode(latlng, maxDistance = 100) {
+      let nearest = null;
+      let minDistance = maxDistance;
+
+      nodes.forEach(node => {
+        const distance = map.distance(latlng, node.latlng);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearest = node;
+        }
+      });
+
+      return nearest;
+    }
+
+    // Set my location
+    function setMyLocation() {
+      if (navigator.geolocation) {
+        showLoading(true);
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setMyLocationCoords(lat, lng);
+            map.setView([lat, lng], 15);
+            showLoading(false);
+            showNotification('Your location has been set!', 'success');
+          },
+          (error) => {
+            showLoading(false);
+            showNotification('Could not get your location. Click on map to set manually.', 'error');
+            // Allow manual setting by clicking on map
+            const originalHandler = isNodePlacementActive;
+            isNodePlacementActive = false;
+            
+            const tempHandler = (e) => {
+              setMyLocationCoords(e.latlng.lat, e.latlng.lng);
+              map.off('click', tempHandler);
+              isNodePlacementActive = originalHandler;
+              showNotification('Location set manually!', 'success');
+            };
+            
+            map.once('click', tempHandler);
+          }
+        );
+      } else {
+        showNotification('Geolocation not supported. Click on map to set location.', 'error');
+      }
+    }
+
+    // Set my location coordinates
+    function setMyLocationCoords(lat, lng) {
+      myLocation = L.latLng(lat, lng);
+      
+      // Remove existing marker
+      if (myLocationMarker) {
+        map.removeLayer(myLocationMarker);
+      }
+      
+      // Add location marker
+      myLocationMarker = L.circleMarker(myLocation, {
+        radius: 12,
+        fillColor: '#e74c3c',
+        color: 'white',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.8,
+        className: 'location-marker'
+      }).addTo(map);
+
+      myLocationMarker.bindPopup(`
+        <div style="text-align: center;">
+          <strong><i class="fas fa-map-marker-alt"></i> My Location</strong><br>
+          Lat: ${lat.toFixed(6)}<br>
+          Lng: ${lng.toFixed(6)}<br>
+          <button onclick="showServiceArea()" style="margin-top: 8px; padding: 4px 8px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Show Service Area</button>
+        </div>
+      `);
+
+      document.getElementById('myLocation').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    // Show service area
+    function showServiceArea() {
+      if (!myLocation) {
+        showNotification('Please set your location first!', 'error');
+        return;
+      }
+
+      // Remove existing service area
+      if (serviceArea) {
+        map.removeLayer(serviceArea);
+      }
+
+      // Add service area circle
+      serviceArea = L.circle(myLocation, {
+        radius: serviceRadius,
+        fillColor: '#27ae60',
+        color: '#27ae60',
+        weight: 2,
+        opacity: 0.8,
+        fillOpacity: 0.2,
+        className: 'service-area'
+      }).addTo(map);
+
+      serviceArea.bindPopup(`
+        <div style="text-align: center;">
+          <strong>Service Area</strong><br>
+          Radius: ${serviceRadius}m<br>
+          Area: ${((Math.PI * serviceRadius * serviceRadius) / 1000000).toFixed(2)} km²
+        </div>
+      `);
+
+      // Fit map to show service area
+      map.fitBounds(serviceArea.getBounds());
+      showNotification(`Service area displayed (${serviceRadius}m radius)`, 'info');
+    }
+
+    // Update service radius
+    function updateServiceRadius(value) {
+      serviceRadius = parseInt(value);
+      document.getElementById('serviceRadiusValue').textContent = value + 'm';
+      
+      if (serviceArea) {
+        showServiceArea(); // Update the service area
+      }
+    }
+
+    // Find nearest facilities
+    function findNearestFacilities() {
+      if (!myLocation) {
+        showNotification('Please set your location first!', 'error');
+        return;
+      }
+
+      showLoading(true);
+      
+      // Simulate finding facilities (in real app, you'd use an API like Overpass or Google Places)
+      setTimeout(() => {
+        const facilityType = document.getElementById('facilityType').value;
+        generateSimulatedFacilities(facilityType);
+        showLoading(false);
+      }, 1500);
+    }
+
+    // Generate simulated facilities
+    function generateSimulatedFacilities(type) {
+      // Clear existing facilities
+      facilities.forEach(facility => {
+        if (facility.marker) {
+          map.removeLayer(facility.marker);
+        }
+      });
+      facilities = [];
+
+      const facilityCount = Math.floor(Math.random() * 8) + 3; // 3-10 facilities
+      const facilityIcons = {
+        'hospital': '🏥',
+        'school': '🏫',
+        'bank': '🏦',
+        'restaurant': '🍽️',
+        'gas-station': '⛽',
+        'pharmacy': '💊',
+        'police': '👮',
+        'fire-station': '🚒'
+      };
+
+      for (let i = 0; i < facilityCount; i++) {
+        // Generate random location within service area
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * serviceRadius * 0.8; // Within 80% of service radius
+        const lat = myLocation.lat + (distance * Math.cos(angle)) / 111000; // Rough conversion
+        const lng = myLocation.lng + (distance * Math.sin(angle)) / (111000 * Math.cos(myLocation.lat * Math.PI / 180));
+        
+        const facilityLocation = L.latLng(lat, lng);
+        const actualDistance = map.distance(myLocation, facilityLocation);
+        
+        const facilityData = {
+          id: `facility_${type}_${i}`,
+          type: type,
+          name: `${type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')} ${i + 1}`,
+          latlng: facilityLocation,
+          distance: actualDistance,
+          travelTime: Math.round(actualDistance / 50), // Rough walking time in minutes
+          icon: facilityIcons[type] || '📍'
+        };
+
+        // Create marker
+        const marker = L.circleMarker(facilityLocation, {
+          radius: 8,
+          fillColor: '#3498db',
+          color: 'white',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8,
+          className: 'facility-marker'
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <div style="text-align: center;">
+            <strong>${facilityData.icon} ${facilityData.name}</strong><br>
+            Distance: ${(facilityData.distance / 1000).toFixed(2)} km<br>
+            Est. Walk Time: ${facilityData.travelTime} min<br>
+            <button onclick="getDirections('${facilityData.id}')" style="margin-top: 8px; padding: 4px 8px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Get Directions</button>
+          </div>
+        `);
+
+        facilityData.marker = marker;
+        facilities.push(facilityData);
+      }
+
+      // Sort by distance
+      facilities.sort((a, b) => a.distance - b.distance);
+      
+      updateFacilityList();
+      showNotification(`Found ${facilities.length} ${type.replace('-', ' ')}s nearby`, 'success');
+    }
+
+    // Update facility list
+    function updateFacilityList() {
+      const facilityList = document.getElementById('facilityList');
+      
+      if (facilities.length === 0) {
+        facilityList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Set your location and search for facilities.</div>';
+        return;
+      }
+
+      const html = facilities.map(facility => `
+        <div class="facility-item" onclick="focusFacility('${facility.id}')">
+          <div>
+            <span>${facility.icon}</span>
+            <strong>${facility.name}</strong>
+            <div style="font-size: 11px; color: #666;">
+              ${(facility.distance / 1000).toFixed(2)} km away • ${facility.travelTime} min walk
+            </div>
+          </div>
+          <button class="delete-btn" onclick="event.stopPropagation(); removeFacility('${facility.id}')">×</button>
+        </div>
+      `).join('');
+
+      facilityList.innerHTML = html;
+    }
+
+    // Focus on facility
+    function focusFacility(facilityId) {
+      const facility = facilities.find(f => f.id === facilityId);
+      if (facility) {
+        map.setView(facility.latlng, 16);
+        facility.marker.openPopup();
+      }
+    }
+
+    // Remove facility
+    function removeFacility(facilityId) {
+      const facilityIndex = facilities.findIndex(f => f.id === facilityId);
+      if (facilityIndex !== -1) {
+        const facility = facilities[facilityIndex];
+        if (facility.marker) {
+          map.removeLayer(facility.marker);
+        }
+        facilities.splice(facilityIndex, 1);
+        updateFacilityList();
+        showNotification('Facility removed', 'info');
+      }
+    }
+
+    // Get directions to facility
+    function getDirections(facilityId) {
+      const facility = facilities.find(f => f.id === facilityId);
+      if (!facility || !myLocation) {
+        showNotification('Cannot get directions', 'error');
+        return;
+      }
+
+      // Remove existing routing control
+      if (routingControl) {
+        map.removeControl(routingControl);
+      }
+
+      // Create new routing control
+      routingControl = L.Routing.control({
+        waypoints: [myLocation, facility.latlng],
+        routeWhileDragging: false,
+        showAlternatives: true,
+        lineOptions: {
+          styles: [{ color: '#3498db', weight: 4, opacity: 0.7 }]
+        }
+      }).on('routesfound', function(e) {
+        const routes = e.routes || [];
+        if (routes.length > 0) {
+          const summary = routes[0].summary;
+          showNotification(
+            `Route to ${facility.name}: ${(summary.totalDistance/1000).toFixed(2)} km, ${(summary.totalTime/60).toFixed(0)} min`, 
+            'success'
+          );
+        }
+      }).addTo(map);
+    }
+
+    // Analyze service area
+    function analyzeServiceArea() {
+      if (!myLocation) {
+        showNotification('Please set your location first!', 'error');
+        return;
+      }
+
+      showLoading(true);
+
+      setTimeout(() => {
+        // Count nodes within service area
+        const nodesInArea = nodes.filter(node => 
+          map.distance(myLocation, node.latlng) <= serviceRadius
+        ).length;
+
+        // Count facilities in area
+        const facilitiesInArea = facilities.length;
+
+        // Calculate coverage area
+        const coverageArea = (Math.PI * serviceRadius * serviceRadius) / 1000000; // km²
+
+        // Calculate service density
+        const totalServices = nodesInArea + facilitiesInArea;
+        const serviceDensity = totalServices / coverageArea;
+
+        const results = {
+          type: 'Service Area Analysis',
+          radius: serviceRadius + 'm',
+          coverageArea: coverageArea.toFixed(2) + ' km²',
+          nodesInArea: nodesInArea,
+          facilitiesInArea: facilitiesInArea,
+          totalServices: totalServices,
+          serviceDensity: serviceDensity.toFixed(1) + ' services/km²',
+          accessibility: totalServices > 5 ? 'Good' : totalServices > 2 ? 'Moderate' : 'Limited'
+        };
+
+        displayServiceAreaResults(results);
+        showLoading(false);
+        showNotification('Service area analysis completed!', 'success');
+      }, 1000);
+    }
+
+    // Display service area results
+    function displayServiceAreaResults(results) {
+      const resultsDiv = document.getElementById('serviceAreaResults');
+      
+      let html = `<h4 style="color: #2c3e50; margin-bottom: 10px;">${results.type}</h4>`;
+      html += '<div style="font-size: 12px;">';
+      
+      Object.keys(results).forEach(key => {
+        if (key !== 'type') {
+          html += `<div style="margin: 5px 0;"><strong>${key.replace(/([A-Z])/g, ' $1').toLowerCase()}:</strong> ${results[key]}</div>`;
+        }
+      });
+      
+      html += '</div>';
+      resultsDiv.innerHTML = html;
+    }
+
+    // Timetable Management Functions
+    function addTimeSlot() {
+      const scheduleName = document.getElementById('scheduleName').value.trim();
+      const timeSlot = document.getElementById('timeSlot').value;
+      const duration = parseInt(document.getElementById('duration').value);
+      const description = document.getElementById('activityDescription').value.trim();
+
+      if (!scheduleName || !timeSlot || !description) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+      }
+
+      const timeSlotData = {
+        id: `schedule_${Date.now()}`,
+        name: scheduleName,
+        time: timeSlot,
+        duration: duration,
+        description: description,
+        active: false
+      };
+
+      timetable.push(timeSlotData);
+      timetable.sort((a, b) => a.time.localeCompare(b.time));
+      
+      updateTimetableList();
+      
+      // Clear form
+      document.getElementById('scheduleName').value = '';
+      document.getElementById('timeSlot').value = '';
+      document.getElementById('duration').value = '30';
+      document.getElementById('activityDescription').value = '';
+      
+      showNotification('Time slot added to timetable', 'success');
+    }
+
+    // Update timetable list
+    function updateTimetableList() {
+      const timetableList = document.getElementById('timetableList');
+      
+      if (timetable.length === 0) {
+        timetableList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No time slots added yet.</div>';
+        return;
+      }
+
+      const html = timetable.map(slot => `
+        <div class="timetable-item time-slot ${slot.active ? 'active' : ''}" onclick="toggleTimeSlot('${slot.id}')">
+          <div>
+            <strong>${slot.time} - ${slot.name}</strong>
+            <div style="font-size: 11px; color: #666;">
+              Duration: ${slot.duration} min
+            </div>
+            <div style="font-size: 10px; color: #888; margin-top: 2px;">
+              ${slot.description}
+            </div>
+          </div>
+          <button class="delete-btn" onclick="event.stopPropagation(); removeTimeSlot('${slot.id}')">×</button>
+        </div>
+      `).join('');
+
+      timetableList.innerHTML = html;
+    }
+
+    // Toggle time slot active state
+    function toggleTimeSlot(slotId) {
+      const slot = timetable.find(s => s.id === slotId);
+      if (slot) {
+        slot.active = !slot.active;
+        updateTimetableList();
+        
+        if (slot.active) {
+          showNotification(`Activated: ${slot.name}`, 'success');
+          // Apply timetable constraints to network analysis
+          applyTimetableConstraints(slot);
+        } else {
+          showNotification(`Deactivated: ${slot.name}`, 'info');
+        }
+      }
+    }
+
+    // Apply timetable constraints
+    function applyTimetableConstraints(activeSlot) {
+      // Modify network analysis based on active time slot
+      // This could affect routing times, service availability, etc.
+      
+      // Example: Adjust analysis radius based on time of day
+      const hour = parseInt(activeSlot.time.split(':')[0]);
+      let timeMultiplier = 1;
+      
+      if (hour >= 6 && hour <= 9) { // Morning rush
+        timeMultiplier = 1.5;
+      } else if (hour >= 17 && hour <= 19) { // Evening rush
+        timeMultiplier = 1.3;
+      } else if (hour >= 22 || hour <= 5) { // Night time
+        timeMultiplier = 0.7;
+      }
+      
+      // Apply time-based constraints to routing and analysis
+      showNotification(`Applied time constraints for ${activeSlot.name}`, 'info');
+    }
+
+    // Remove time slot
+    function removeTimeSlot(slotId) {
+      const slotIndex = timetable.findIndex(s => s.id === slotId);
+      if (slotIndex !== -1) {
+        const slot = timetable[slotIndex];
+        timetable.splice(slotIndex, 1);
+        updateTimetableList();
+        showNotification(`Removed: ${slot.name}`, 'info');
+      }
+    }
+
+    // Clear timetable
+    function clearTimetable() {
+      if (timetable.length === 0) {
+        showNotification('Timetable is already empty', 'info');
+        return;
+      }
+      
+      timetable = [];
+      updateTimetableList();
+      showNotification('Timetable cleared', 'info');
+    }
+
+    // Enhanced Node Management Functions
+    function addNode(latlng, type = 'standard') {
+      const nodeId = 'node_' + Date.now();
+      const colors = {
+        'critical': '#e74c3c',
+        'standard': '#f39c12',
+        'optimal': '#27ae60'
+      };
+
+      const marker = L.circleMarker(latlng, {
+        radius: 8,
+        fillColor: colors[type],
+        color: 'white',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div style="text-align: center;">
+          <strong>Node: ${nodeId}</strong><br>
+          Type: ${type}<br>
+          Lat: ${latlng.lat.toFixed(6)}<br>
+          Lng: ${latlng.lng.toFixed(6)}<br>
+          <label><input type="checkbox" onchange="toggleNodeSelection('${nodeId}', this.checked)"> Select</label><br>
+          <button onclick="removeNode('${nodeId}')" style="margin-top: 8px; padding: 4px 8px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+        </div>
+      `);
+
+      const nodeData = {
+        id: nodeId,
+        latlng: latlng,
+        type: type,
+        marker: marker,
+        selected: false,
+        connections: []
+      };
+
+      nodes.push(nodeData);
+      updateNodeList();
+      updateNetworkMetrics();
+      
+      showNotification(`Node added: ${nodeId}`, 'success');
+    }
+
+    // Toggle node selection
+    function toggleNodeSelection(nodeId, selected) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node) {
+        node.selected = selected;
+        
+        // Update marker appearance
+        const color = selected ? '#9b59b6' : getNodeColor(node.type);
+        node.marker.setStyle({ fillColor: color });
+        
+        if (selected && !selectedNodes.includes(nodeId)) {
+          selectedNodes.push(nodeId);
+        } else if (!selected) {
+          selectedNodes = selectedNodes.filter(id => id !== nodeId);
+        }
+        
+        showNotification(`Node ${selected ? 'selected' : 'deselected'}: ${nodeId}`, 'info');
+      }
+    }
+
+    // Get node color based on type
+    function getNodeColor(type) {
+      const colors = {
+        'critical': '#e74c3c',
+        'standard': '#f39c12',
+        'optimal': '#27ae60'
+      };
+      return colors[type] || '#95a5a6';
+    }
+
+    // Remove node
+    function removeNode(nodeId) {
+      const nodeIndex = nodes.findIndex(n => n.id === nodeId);
+      if (nodeIndex !== -1) {
+        const node = nodes[nodeIndex];
+        map.removeLayer(node.marker);
+        nodes.splice(nodeIndex, 1);
+        
+        // Remove from selected nodes
+        selectedNodes = selectedNodes.filter(id => id !== nodeId);
+        
+        updateNodeList();
+        updateNetworkMetrics();
+        showNotification(`Node removed: ${nodeId}`, 'info');
+      }
+    }
+
+    // Toggle node placement mode
+    function toggleNodePlacement() {
+      isNodePlacementActive = !isNodePlacementActive;
+      const btn = event.target;
+      
+      if (isNodeDeletionActive) {
+        isNodeDeletionActive = false;
+        updateNodeDeletionButton();
+      }
+      
+      if (isNodePlacementActive) {
+        btn.innerHTML = '<i class="fas fa-stop"></i> Stop Adding';
+        btn.style.background = '#e74c3c';
+        showNotification('Click on map to place nodes', 'info');
+      } else {
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add Nodes';
+        btn.style.background = '';
+        showNotification('Node placement stopped', 'info');
+      }
+    }
+
+    // Toggle node deletion mode
+    function toggleNodeDeletion() {
+      isNodeDeletionActive = !isNodeDeletionActive;
+      const btn = event.target;
+      
+      if (isNodePlacementActive) {
+        isNodePlacementActive = false;
+        updateNodePlacementButton();
+      }
+      
+      if (isNodeDeletionActive) {
+        btn.innerHTML = '<i class="fas fa-stop"></i> Stop Deleting';
+        btn.style.background = '#e74c3c';
+        showNotification('Click on nodes to delete them', 'info');
+      } else {
+        btn.innerHTML = '<i class="fas fa-minus"></i> Delete Nodes';
+        btn.style.background = '';
+        showNotification('Node deletion stopped', 'info');
+      }
+    }
+
+    // Update button states
+    function updateNodePlacementButton() {
+      const btn = document.querySelector('button[onclick="toggleNodePlacement()"]');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add Nodes';
+        btn.style.background = '';
+      }
+    }
+
+    function updateNodeDeletionButton() {
+      const btn = document.querySelector('button[onclick="toggleNodeDeletion()"]');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-minus"></i> Delete Nodes';
+        btn.style.background = '';
+      }
+    }
+
+    // Delete selected nodes
+    function deleteSelectedNodes() {
+      if (selectedNodes.length === 0) {
+        showNotification('No nodes selected for deletion', 'error');
+        return;
+      }
+
+      const nodeCount = selectedNodes.length;
+      selectedNodes.forEach(nodeId => {
+        removeNode(nodeId);
+      });
+      
+      selectedNodes = [];
+      showNotification(`Deleted ${nodeCount} selected nodes`, 'success');
+    }
+
+    // Generate random nodes
+    function generateRandomNodes() {
+      const count = parseInt(document.getElementById('nodeCount').value);
+      const bounds = map.getBounds();
+      const types = ['critical', 'standard', 'optimal'];
+
+      for (let i = 0; i < count; i++) {
+        const lat = bounds.getSouth() + (bounds.getNorth() - bounds.getSouth()) * Math.random();
+        const lng = bounds.getWest() + (bounds.getEast() - bounds.getWest()) * Math.random();
+        const type = types[Math.floor(Math.random() * types.length)];
+        
+        addNode(L.latLng(lat, lng), type);
+      }
+
+      showNotification(`Generated ${count} random nodes`, 'success');
+    }
+
+    // Clear all nodes
+    function clearAllNodes() {
+      if (nodes.length === 0) {
+        showNotification('No nodes to clear', 'info');
+        return;
+      }
+
+      const nodeCount = nodes.length;
+      nodes.forEach(node => {
+        map.removeLayer(node.marker);
+      });
+      
+      nodes = [];
+      selectedNodes = [];
+      updateNodeList();
+      updateNetworkMetrics();
+      showNotification(`Cleared ${nodeCount} nodes`, 'info');
+    }
+
+    // Update node list in sidebar
+    function updateNodeList() {
+      const nodeList = document.getElementById('nodeList');
+      
+      if (nodes.length === 0) {
+        nodeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No nodes added yet. Click "Add Nodes" to start.</div>';
+        return;
+      }
+
+      const html = nodes.map(node => `
+        <div class="node-item" onclick="focusNode('${node.id}')" style="${node.selected ? 'background: #f8f9fa;' : ''}">
+          <div>
+            <span class="status-indicator status-${node.type === 'critical' ? 'active' : node.type === 'standard' ? 'pending' : 'inactive'}"></span>
+            <strong>${node.id}</strong> ${node.selected ? '✓' : ''}
+            <div style="font-size: 11px; color: #666;">
+              ${node.latlng.lat.toFixed(4)}, ${node.latlng.lng.toFixed(4)}
+            </div>
+          </div>
+          <button class="delete-btn" onclick="event.stopPropagation(); removeNode('${node.id}')">×</button>
+        </div>
+      `).join('');
+
+      nodeList.innerHTML = html;
+    }
+
+    // Focus on a specific node
+    function focusNode(nodeId) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node) {
+        map.setView(node.latlng, 15);
+        node.marker.openPopup();
+      }
+    }
+
+    // Run network analysis
+    function runNetworkAnalysis() {
+      if (nodes.length < 2) {
+        showNotification('Add at least 2 nodes to run analysis', 'error');
+        return;
+      }
+
+      showLoading(true);
+
+      setTimeout(() => {
+        const analysisType = document.getElementById('analysisType').value;
+        let results = {};
+
+        // Consider active timetable constraints
+        const activeSlots = timetable.filter(slot => slot.active);
+        
+        switch (analysisType) {
+          case 'service-area':
+            results = analyzeServiceAreaNetwork();
+            break;
+          default:
+            results = performStandardAnalysis(analysisType);
+        }
+
+        // Apply timetable modifiers if any active slots
+        if (activeSlots.length > 0) {
+          results = applyTimetableToResults(results, activeSlots);
+        }
+
+        displayAnalysisResults(results);
+        showLoading(false);
+        showNotification('Network analysis completed!', 'success');
+      }, 2000);
+    }
+
+    // Analyze service area network
+    function analyzeServiceAreaNetwork() {
+      if (!myLocation) {
+        return {
+          type: 'Service Area Network Analysis',
+          message: 'Please set your location first'
+        };
+      }
+
+      const nodesInRange = nodes.filter(node => 
+        map.distance(myLocation, node.latlng) <= serviceRadius
+      );
+
+      const facilitiesInRange = facilities.filter(facility => 
+        map.distance(myLocation, facility.latlng) <= serviceRadius
+      );
+
+      const totalConnectivity = calculateNetworkConnectivity(nodesInRange);
+      const serviceQuality = calculateServiceQuality(nodesInRange, facilitiesInRange);
+
+      return {
+        type: 'Service Area Network Analysis',
+        serviceRadius: serviceRadius + 'm',
+        nodesInRange: nodesInRange.length,
+        facilitiesInRange: facilitiesInRange.length,
+        networkConnectivity: totalConnectivity.toFixed(1) + '%',
+        serviceQuality: serviceQuality,
+        coverageEfficiency: calculateCoverageEfficiency().toFixed(1) + '%',
+        accessibilityScore: calculateAccessibilityScore().toFixed(1) + '/10'
+      };
+    }
+
+    // Calculate network connectivity
+    function calculateNetworkConnectivity(nodeList) {
+      if (nodeList.length < 2) return 0;
+      
+      let connections = 0;
+      const maxConnections = (nodeList.length * (nodeList.length - 1)) / 2;
+      
+      for (let i = 0; i < nodeList.length; i++) {
+        for (let j = i + 1; j < nodeList.length; j++) {
+          const distance = map.distance(nodeList[i].latlng, nodeList[j].latlng);
+          if (distance <= analysisRadius) {
+            connections++;
+          }
+        }
+      }
+      
+      return (connections / maxConnections) * 100;
+    }
+
+    // Calculate service quality
+    function calculateServiceQuality(nodeList, facilityList) {
+      const totalServices = nodeList.length + facilityList.length;
+      if (totalServices >= 10) return 'Excellent';
+      if (totalServices >= 6) return 'Good';
+      if (totalServices >= 3) return 'Fair';
+      return 'Poor';
+    }
+
+    // Calculate coverage efficiency
+    function calculateCoverageEfficiency() {
+      if (!myLocation) return 0;
+      
+      const totalArea = Math.PI * serviceRadius * serviceRadius;
+      const coveredArea = nodes.length * Math.PI * (analysisRadius / 2) * (analysisRadius / 2);
+      
+      return Math.min(100, (coveredArea / totalArea) * 100);
+    }
+
+    // Calculate accessibility score
+    function calculateAccessibilityScore() {
+      if (!myLocation) return 0;
+      
+      let score = 0;
+      
+      // Distance factor
+      const avgDistance = nodes.length > 0 ? 
+        nodes.reduce((sum, node) => sum + map.distance(myLocation, node.latlng), 0) / nodes.length : 0;
+      score += Math.max(0, 3 - (avgDistance / 1000)); // 3 points for distance under 1km
+      
+      // Facility factor
+      score += Math.min(3, facilities.length * 0.5); // Up to 3 points for facilities
+      
+      // Connectivity factor
+      const connectivity = calculateNetworkConnectivity(nodes);
+      score += (connectivity / 100) * 4; // Up to 4 points for connectivity
+      
+      return Math.min(10, score);
+    }
+
+    // Perform standard analysis
+    function performStandardAnalysis(analysisType) {
+      // Implementation for other analysis types (existing code)
+      return {
+        type: analysisType + ' Analysis',
+        totalNodes: nodes.length,
+        message: 'Analysis completed with standard parameters'
+      };
+    }
+
+    // Apply timetable to results
+    function applyTimetableToResults(results, activeSlots) {
+      results.timetableConstraints = activeSlots.map(slot => slot.name).join(', ');
+      results.timeModifier = 'Applied';
+      return results;
+    }
+
+    // Display analysis results
+    function displayAnalysisResults(results) {
+      const resultsDiv = document.getElementById('analysisResults');
+      
+      let html = `<h4 style="color: #2c3e50; margin-bottom: 10px;">${results.type}</h4>`;
+      
+      if (results.message) {
+        html += `<p style="color: #666;">${results.message}</p>`;
+      } else {
+        html += '<div style="font-size: 12px;">';
+        Object.keys(results).forEach(key => {
+          if (key !== 'type') {
+            html += `<div style="margin: 5px 0;"><strong>${key.replace(/([A-Z])/g, ' $1').toLowerCase()}:</strong> ${results[key]}</div>`;
+          }
+        });
+        html += '</div>';
+      }
+      
+      resultsDiv.innerHTML = html;
+    }
+
+    // Switch tabs
+    function switchTab(tabName) {
+      // Update tab buttons
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(tabName + '-tab').classList.add('active');
+    }
+
+    // Update network metrics
+    function updateNetworkMetrics() {
+      document.getElementById('nodeCount-metric').textContent = nodes.length;
+      
+      // Calculate connections
+      let totalConnections = 0;
+      let totalDistance = 0;
+      let connectionCount = 0;
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const distance = map.distance(nodes[i].latlng, nodes[j].latlng);
+          if (distance <= analysisRadius) {
+            totalConnections++;
+            totalDistance += distance;
+            connectionCount++;
+          }
+        }
+      }
+
+      document.getElementById('edgeCount-metric').textContent = totalConnections;
+      
+      const avgDistance = connectionCount > 0 ? (totalDistance / connectionCount / 1000).toFixed(1) : 0;
+      document.getElementById('avgDistance-metric').textContent = avgDistance + ' km';
+      
+      const maxPossibleConnections = (nodes.length * (nodes.length - 1)) / 2;
+      const density = maxPossibleConnections > 0 ? ((totalConnections / maxPossibleConnections) * 100).toFixed(1) : 0;
+      document.getElementById('networkDensity-metric').textContent = density + '%';
+    }
+
+    // Utility functions
+    function changeAnalysisType() {
+      currentAnalysisType = document.getElementById('analysisType').value;
+      showNotification(`Analysis type changed to: ${currentAnalysisType}`, 'info');
+    }
+
+    function updateRadiusValue(value) {
+      analysisRadius = parseInt(value);
+      document.getElementById('radiusValue').textContent = value + 'm';
+      updateNetworkMetrics();
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading').style.display = show ? 'block' : 'none';
+    }
+
+    function showNotification(message, type = 'info') {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = `notification ${type}`;
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Initialize the application when page loads
+    window.onload = function() {
+      initializeApp();
+    };
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case 'l':
+            e.preventDefault();
+            setMyLocation();
+            break;
+          case 's':
+            e.preventDefault();
+            showServiceArea();
+            break;
+          case 'f':
+            e.preventDefault();
+            findNearestFacilities();
+            break;
+          case 'r':
+            e.preventDefault();
+            runNetworkAnalysis();
+            break;
+        }
+      }
+      
+      if (e.key === 'Escape') {
+        if (isNodePlacementActive) {
+          toggleNodePlacement();
+        }
+        if (isNodeDeletionActive) {
+          toggleNodeDeletion();
+        }
+      }
+    });
+
+    // Add window resize handler
+    window.addEventListener('resize', function() {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+    });
+
+    // Export and Import Functions
+    function exportResults() {
+      const networkExport = {
+        timestamp: new Date().toISOString(),
+        myLocation: myLocation ? {
+          lat: myLocation.lat,
+          lng: myLocation.lng
+        } : null,
+        serviceRadius: serviceRadius,
+        analysisType: currentAnalysisType,
+        nodes: nodes.map(node => ({
+          id: node.id,
+          lat: node.latlng.lat,
+          lng: node.latlng.lng,
+          type: node.type,
+          selected: node.selected
+        })),
+        facilities: facilities.map(facility => ({
+          id: facility.id,
+          name: facility.name,
+          type: facility.type,
+          lat: facility.latlng.lat,
+          lng: facility.latlng.lng,
+          distance: facility.distance
+        })),
+        timetable: timetable.map(slot => ({
+          id: slot.id,
+          name: slot.name,
+          time: slot.time,
+          duration: slot.duration,
+          description: slot.description,
+          active: slot.active
+        })),
+        metrics: {
+          nodeCount: nodes.length,
+          analysisRadius: analysisRadius,
+          networkType: document.getElementById('networkType').value
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(networkExport, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `enhanced-network-analysis-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showNotification('Enhanced network data exported successfully', 'success');
+    }
+
+    function importNetwork() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const importedData = JSON.parse(event.target.result);
+            
+            // Clear existing data
+            clearAllNodes();
+            facilities.forEach(facility => {
+              if (facility.marker) map.removeLayer(facility.marker);
+            });
+            facilities = [];
+            timetable = [];
+            
+            // Import my location
+            if (importedData.myLocation) {
+              setMyLocationCoords(importedData.myLocation.lat, importedData.myLocation.lng);
+            }
+            
+            // Import service radius
+            if (importedData.serviceRadius) {
+              serviceRadius = importedData.serviceRadius;
+              document.getElementById('serviceRadius').value = serviceRadius;
+              updateServiceRadius(serviceRadius);
+            }
+            
+            // Import nodes
+            if (importedData.nodes) {
+              importedData.nodes.forEach(nodeData => {
+                addNode(L.latLng(nodeData.lat, nodeData.lng), nodeData.type || 'standard');
+                if (nodeData.selected) {
+                  toggleNodeSelection(nodes[nodes.length - 1].id, true);
+                }
+              });
+            }
+            
+            // Import facilities
+            if (importedData.facilities) {
+              importedData.facilities.forEach(facilityData => {
+                const facilityLocation = L.latLng(facilityData.lat, facilityData.lng);
+                
+                const marker = L.circleMarker(facilityLocation, {
+                  radius: 8,
+                  fillColor: '#3498db',
+                  color: 'white',
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.8,
+                  className: 'facility-marker'
+                }).addTo(map);
+
+                marker.bindPopup(`
+                  <div style="text-align: center;">
+                    <strong>${facilityData.name}</strong><br>
+                    Distance: ${(facilityData.distance / 1000).toFixed(2)} km<br>
+                    <button onclick="getDirections('${facilityData.id}')" style="margin-top: 8px; padding: 4px 8px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Get Directions</button>
+                  </div>
+                `);
+
+                facilities.push({
+                  id: facilityData.id,
+                  name: facilityData.name,
+                  type: facilityData.type,
+                  latlng: facilityLocation,
+                  distance: facilityData.distance,
+                  marker: marker
+                });
+              });
+              updateFacilityList();
+            }
+            
+            // Import timetable
+            if (importedData.timetable) {
+              timetable = importedData.timetable;
+              updateTimetableList();
+            }
+            
+            // Set analysis parameters
+            if (importedData.metrics) {
+              if (importedData.metrics.analysisRadius) {
+                document.getElementById('analysisRadius').value = importedData.metrics.analysisRadius;
+                updateRadiusValue(importedData.metrics.analysisRadius);
+              }
+              if (importedData.metrics.networkType) {
+                document.getElementById('networkType').value = importedData.metrics.networkType;
+              }
+            }
+
+            showNotification(`Imported complete network data successfully`, 'success');
+          } catch (error) {
+            showNotification('Error importing network data: ' + error.message, 'error');
+          }
+        };
+        
+        reader.readAsText(file);
+      };
+      
+      input.click();
+    }
+
+    // Advanced Analysis Functions
+    function performHeatmapAnalysis() {
+      if (nodes.length === 0) {
+        showNotification('No nodes available for heatmap analysis', 'error');
+        return;
+      }
+
+      // Create density heatmap based on node clustering
+      const heatmapData = nodes.map(node => {
+        const nearby = nodes.filter(n => 
+          n !== node && map.distance(node.latlng, n.latlng) <= analysisRadius
+        ).length;
+        
+        return [node.latlng.lat, node.latlng.lng, nearby + 1];
+      });
+
+      showNotification('Heatmap analysis completed', 'success');
+      return heatmapData;
+    }
+
+    function calculateCentralityMetrics() {
+      if (nodes.length < 3) {
+        showNotification('Need at least 3 nodes for centrality analysis', 'error');
+        return;
+      }
+
+      const centrality = nodes.map((node, index) => {
+        let betweennessCentrality = 0;
+        let closenessCentrality = 0;
+        let degree = 0;
+
+        // Calculate degree centrality
+        nodes.forEach((otherNode, otherIndex) => {
+          if (index !== otherIndex) {
+            const distance = map.distance(node.latlng, otherNode.latlng);
+            if (distance <= analysisRadius) {
+              degree++;
+            }
+            closenessCentrality += distance;
+          }
+        });
+
+        // Normalize closeness centrality
+        closenessCentrality = nodes.length > 1 ? (nodes.length - 1) / closenessCentrality : 0;
+
+        return {
+          nodeId: node.id,
+          degree: degree,
+          closeness: closenessCentrality,
+          betweenness: betweennessCentrality // Simplified calculation
+        };
+      });
+
+      return centrality;
+    }
+
+    function detectNetworkAnomalies() {
+      const anomalies = [];
+      
+      nodes.forEach(node => {
+        const connections = nodes.filter(n => 
+          n !== node && map.distance(node.latlng, n.latlng) <= analysisRadius
+        ).length;
+        
+        // Detect isolated nodes
+        if (connections === 0) {
+          anomalies.push({
+            type: 'isolated',
+            nodeId: node.id,
+            description: 'Node has no connections within analysis radius'
+          });
+        }
+        
+        // Detect highly connected nodes (potential hubs)
+        if (connections > nodes.length * 0.7) {
+          anomalies.push({
+            type: 'hub',
+            nodeId: node.id,
+            description: 'Node has unusually high connectivity'
+          });
+        }
+      });
+
+      return anomalies;
+    }
+
+    // Time-based Analysis Functions
+    function analyzeTimeBasedTraffic() {
+      const activeSlots = timetable.filter(slot => slot.active);
+      if (activeSlots.length === 0) {
+        showNotification('No active time slots for traffic analysis', 'error');
+        return;
+      }
+
+      const trafficAnalysis = activeSlots.map(slot => {
+        const hour = parseInt(slot.time.split(':')[0]);
+        let trafficMultiplier = 1;
+        let congestionLevel = 'Low';
+
+        // Determine traffic patterns based on time
+        if (hour >= 7 && hour <= 9) {
+          trafficMultiplier = 1.8;
+          congestionLevel = 'High';
+        } else if (hour >= 17 && hour <= 19) {
+          trafficMultiplier = 1.6;
+          congestionLevel = 'High';
+        } else if (hour >= 12 && hour <= 14) {
+          trafficMultiplier = 1.3;
+          congestionLevel = 'Medium';
+        } else if (hour >= 22 || hour <= 5) {
+          trafficMultiplier = 0.6;
+          congestionLevel = 'Very Low';
+        }
+
+        return {
+          timeSlot: slot.name,
+          time: slot.time,
+          congestionLevel: congestionLevel,
+          trafficMultiplier: trafficMultiplier,
+          estimatedDelay: Math.round((trafficMultiplier - 1) * 15) + ' minutes'
+        };
+      });
+
+      return trafficAnalysis;
+    }
+
+    function optimizeRoutesWithSchedule() {
+      if (nodes.length < 2) {
+        showNotification('Need at least 2 nodes for route optimization', 'error');
+        return;
+      }
+
+      const activeSlots = timetable.filter(slot => slot.active);
+      if (activeSlots.length === 0) {
+        showNotification('No active time slots for schedule-based optimization', 'error');
+        return;
+      }
+
+      showLoading(true);
+
+      setTimeout(() => {
+        // Apply time-based constraints to route optimization
+        const trafficData = analyzeTimeBasedTraffic();
+        
+        // Simple route optimization considering time constraints
+        let optimizedRoute = [];
+        let totalTime = 0;
+        let totalDistance = 0;
+
+        // Start from first node
+        let currentNode = 0;
+        let unvisited = [...Array(nodes.length).keys()].slice(1);
+        optimizedRoute.push(currentNode);
+
+        while (unvisited.length > 0) {
+          let bestNext = unvisited[0];
+          let minCost = Infinity;
+
+          unvisited.forEach(nodeIndex => {
+            const distance = map.distance(nodes[currentNode].latlng, nodes[nodeIndex].latlng);
+            const timeMultiplier = trafficData.length > 0 ? trafficData[0].trafficMultiplier : 1;
+            const cost = distance * timeMultiplier;
+
+            if (cost < minCost) {
+              minCost = cost;
+              bestNext = nodeIndex;
+            }
+          });
+
+          optimizedRoute.push(bestNext);
+          totalDistance += map.distance(nodes[currentNode].latlng, nodes[bestNext].latlng);
+          totalTime += (map.distance(nodes[currentNode].latlng, nodes[bestNext].latlng) / 50) * 
+                     (trafficData.length > 0 ? trafficData[0].trafficMultiplier : 1);
+          
+          unvisited = unvisited.filter(n => n !== bestNext);
+          currentNode = bestNext;
+        }
+
+        // Create optimized route on map
+        const waypoints = optimizedRoute.map(index => nodes[index].latlng);
+        
+        if (routingControl) {
+          map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+          waypoints: waypoints,
+          routeWhileDragging: false,
+          showAlternatives: false,
+          lineOptions: {
+            styles: [{ color: '#27ae60', weight: 4, opacity: 0.8 }]
+          }
+        }).addTo(map);
+
+        showLoading(false);
+        showNotification(`Optimized route: ${(totalDistance/1000).toFixed(2)} km, ${totalTime.toFixed(0)} min`, 'success');
+      }, 2000);
+    }
+
+    // Facility-based Analysis
+    function analyzeNearestFacilityAccess() {
+      if (!myLocation || facilities.length === 0) {
+        showNotification('Need location and facilities for access analysis', 'error');
+        return;
+      }
+
+      const accessAnalysis = facilities.map(facility => {
+        const walkTime = facility.travelTime;
+        const distance = facility.distance;
+        
+        let accessibilityRating = 'Poor';
+        if (walkTime <= 5) accessibilityRating = 'Excellent';
+        else if (walkTime <= 10) accessibilityRating = 'Good';
+        else if (walkTime <= 15) accessibilityRating = 'Fair';
+
+        return {
+          facilityName: facility.name,
+          distance: (distance / 1000).toFixed(2) + ' km',
+          walkTime: walkTime + ' minutes',
+          accessibilityRating: accessibilityRating,
+          withinServiceArea: distance <= serviceRadius
+        };
+      });
+
+      // Display results in service area results panel
+      const resultsDiv = document.getElementById('serviceAreaResults');
+      let html = '<h4 style="color: #2c3e50; margin-bottom: 10px;">Facility Access Analysis</h4>';
+      html += '<div style="font-size: 11px; max-height: 150px; overflow-y: auto;">';
+      
+      accessAnalysis.forEach(analysis => {
+        const color = analysis.accessibilityRating === 'Excellent' ? '#27ae60' : 
+                     analysis.accessibilityRating === 'Good' ? '#f39c12' : 
+                     analysis.accessibilityRating === 'Fair' ? '#e67e22' : '#e74c3c';
+        
+        html += `
+          <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid ${color};">
+            <strong>${analysis.facilityName}</strong><br>
+            Distance: ${analysis.distance} • Time: ${analysis.walkTime}<br>
+            Access: <span style="color: ${color};">${analysis.accessibilityRating}</span>
+            ${analysis.withinServiceArea ? ' ✓' : ' (Outside service area)'}
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      resultsDiv.innerHTML = html;
+
+      showNotification('Facility access analysis completed', 'success');
+    }
+
+    // Real-time Features
+    function updateRealTimeMetrics() {
+      // Simulate real-time updates
+      setInterval(() => {
+        const now = new Date();
+        const currentTime = now.toTimeString().substr(0, 5);
+        
+        // Check if any timetable slots should be activated
+        timetable.forEach(slot => {
+          const timeDiff = Math.abs(
+            (parseInt(currentTime.split(':')[0]) * 60 + parseInt(currentTime.split(':')[1])) -
+            (parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1]))
+          );
+          
+          // Auto-activate slots within 5 minutes of scheduled time
+          if (timeDiff <= 5 && !slot.active) {
+            slot.active = true;
+            updateTimetableList();
+            showNotification(`Auto-activated: ${slot.name}`, 'info');
+          }
+          // Auto-deactivate slots after duration + 5 minutes
+          else if (timeDiff > slot.duration + 5 && slot.active) {
+            slot.active = false;
+            updateTimetableList();
+          }
+        });
+        
+        // Update network metrics if there are active changes
+        const hasActiveSlots = timetable.some(slot => slot.active);
+        if (hasActiveSlots) {
+          updateNetworkMetrics();
+        }
+      }, 60000); // Check every minute
+    }
+
+    // Initialize real-time features
+    updateRealTimeMetrics();
+
+    // Additional Export/Import buttons (add to existing panels)
+    function addExportImportButtons() {
+      // Add export/import buttons to analysis tools panel
+      const analysisPanel = document.querySelector('.panel:has(#analysisResults)');
+      if (analysisPanel && !analysisPanel.querySelector('.export-import-buttons')) {
+        const btnGroup = analysisPanel.querySelector('.btn-group');
+        if (btnGroup) {
+          const exportBtn = document.createElement('button');
+          exportBtn.className = 'btn';
+          exportBtn.innerHTML = '<i class="fas fa-download"></i> Export';
+          exportBtn.onclick = exportResults;
+          
+          const importBtn = document.createElement('button');
+          importBtn.className = 'btn';
+          importBtn.innerHTML = '<i class="fas fa-upload"></i> Import';
+          importBtn.onclick = importNetwork;
+          
+          btnGroup.appendChild(exportBtn);
+          btnGroup.appendChild(importBtn);
+          btnGroup.classList.add('export-import-buttons');
+        }
+      }
+    }
+
+    // Enhanced route optimization with time constraints
+    function optimizeRoutesAdvanced() {
+      if (nodes.length < 2) {
+        showNotification('Need at least 2 nodes for route optimization', 'error');
+        return;
+      }
+
+      showLoading(true);
+      
+      setTimeout(() => {
+        const activeSlots = timetable.filter(slot => slot.active);
+        let timeMultiplier = 1;
+        
+        // Apply time-based constraints
+        if (activeSlots.length > 0) {
+          const avgHour = activeSlots.reduce((sum, slot) => {
+            return sum + parseInt(slot.time.split(':')[0]);
+          }, 0) / activeSlots.length;
+          
+          if (avgHour >= 7 && avgHour <= 9) timeMultiplier = 1.5;
+          else if (avgHour >= 17 && avgHour <= 19) timeMultiplier = 1.3;
+          else if (avgHour >= 22 || avgHour <= 5) timeMultiplier = 0.7;
+        }
+
+        // Enhanced nearest neighbor with time constraints
+        let optimizedOrder = [0];
+        let unvisited = [...Array(nodes.length).keys()].slice(1);
+        let current = 0;
+        let totalDistance = 0;
+
+        while (unvisited.length > 0) {
+          let nearest = unvisited[0];
+          let minCost = map.distance(nodes[current].latlng, nodes[nearest].latlng) * timeMultiplier;
+
+          unvisited.forEach(nodeIndex => {
+            const distance = map.distance(nodes[current].latlng, nodes[nodeIndex].latlng);
+            const cost = distance * timeMultiplier;
+            if (cost < minCost) {
+              minCost = cost;
+              nearest = nodeIndex;
+            }
+          });
+
+          optimizedOrder.push(nearest);
+          totalDistance += map.distance(nodes[current].latlng, nodes[nearest].latlng);
+          unvisited = unvisited.filter(n => n !== nearest);
+          current = nearest;
+        }
+
+        // Create optimized route
+        const waypoints = optimizedOrder.map(index => nodes[index].latlng);
+        
+        if (routingControl) {
+          map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+          waypoints: waypoints,
+          routeWhileDragging: false,
+          showAlternatives: false,
+          lineOptions: {
+            styles: [{ color: '#27ae60', weight: 4, opacity: 0.8 }]
+          }
+        }).on('routesfound', function(e) {
+          const routes = e.routes || [];
+          if (routes.length > 0) {
+            const summary = routes[0].summary;
+            const adjustedTime = (summary.totalTime / 60) * timeMultiplier;
+            showNotification(
+              `Optimized route: ${(summary.totalDistance/1000).toFixed(2)} km, ${adjustedTime.toFixed(0)} min (time-adjusted)`, 
+              'success'
+            );
+          }
+        }).addTo(map);
+
+        showLoading(false);
+      }, 2000);
+    }
+
+    // Distance-based node filtering
+    function filterNodesByDistance() {
+      if (!myLocation) {
+        showNotification('Set your location first to filter by distance', 'error');
+        return;
+      }
+
+      const maxDistance = serviceRadius;
+      let filteredCount = 0;
+
+      nodes.forEach(node => {
+        const distance = map.distance(myLocation, node.latlng);
+        const isWithinRange = distance <= maxDistance;
+        
+        // Update node visibility and style
+        if (isWithinRange) {
+          node.marker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+          filteredCount++;
+        } else {
+          node.marker.setStyle({ opacity: 0.3, fillOpacity: 0.2 });
+        }
+      });
+
+      showNotification(`${filteredCount} nodes within ${maxDistance}m of your location`, 'info');
+    }
+
+    // Add context menu for advanced operations
+    function addContextMenu() {
+      map.on('contextmenu', function(e) {
+        const popup = L.popup()
+          .setLatLng(e.latlng)
+          .setContent(`
+            <div style="text-align: center; min-width: 150px;">
+              <strong>Quick Actions</strong><br>
+              <button onclick="addNode(L.latLng(${e.latlng.lat}, ${e.latlng.lng}), 'standard'); map.closePopup();" 
+                      style="margin: 2px; padding: 4px 8px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer; width: 100%;">
+                Add Node Here
+              </button>
+              <button onclick="setMyLocationCoords(${e.latlng.lat}, ${e.latlng.lng}); map.closePopup();" 
+                      style="margin: 2px; padding: 4px 8px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer; width: 100%;">
+                Set as My Location
+              </button>
+              <button onclick="map.setView([${e.latlng.lat}, ${e.latlng.lng}], 15); map.closePopup();" 
+                      style="margin: 2px; padding: 4px 8px; background: #27ae60; color: white; border: none; border-radius: 3px; cursor: pointer; width: 100%;">
+                Center Map Here
+              </button>
+            </div>
+          `)
+          .openOn(map);
+      });
+    }
+
+    // Enhanced initialization
+    function initializeEnhancedFeatures() {
+      addExportImportButtons();
+      addContextMenu();
+      
+      // Add filter by distance button
+      setTimeout(() => {
+        const servicePanel = document.querySelector('.panel:has(#serviceRadius)');
+        if (servicePanel) {
+          const filterBtn = document.createElement('button');
+          filterBtn.className = 'btn';
+          filterBtn.innerHTML = '<i class="fas fa-filter"></i> Filter Nodes by Distance';
+          filterBtn.onclick = filterNodesByDistance;
+          filterBtn.style.width = '100%';
+          filterBtn.style.marginTop = '10px';
+          
+          const radiusControl = servicePanel.querySelector('.distance-controls').parentElement;
+          radiusControl.insertAdjacentElement('afterend', filterBtn);
+        }
+        
+        // Add advanced route optimization button
+        const routePanel = document.querySelector('.panel:has(#routeList)');
+        if (routePanel) {
+          const optimizeAdvancedBtn = document.createElement('button');
+          optimizeAdvancedBtn.className = 'btn';
+          optimizeAdvancedBtn.innerHTML = '<i class="fas fa-route"></i> Advanced Optimize';
+          optimizeAdvancedBtn.onclick = optimizeRoutesAdvanced;
+          
+          const btnGroup = routePanel.querySelector('.btn-group');
+          if (btnGroup) {
+            btnGroup.appendChild(optimizeAdvancedBtn);
+          }
+        }
+
+        // Add facility access analysis button
+        const analysisTab = document.getElementById('analysis-tab');
+        if (analysisTab) {
+          const accessBtn = document.createElement('button');
+          accessBtn.className = 'btn';
+          accessBtn.innerHTML = '<i class="fas fa-universal-access"></i> Analyze Facility Access';
+          accessBtn.onclick = analyzeNearestFacilityAccess;
+          accessBtn.style.width = '100%';
+          accessBtn.style.marginTop = '10px';
+          
+          const existingBtn = analysisTab.querySelector('button');
+          existingBtn.insertAdjacentElement('afterend', accessBtn);
+        }
+      }, 1000);
+    }
+
+    // Update window onload to include all initializations
+    window.onload = function() {
+      initializeApp();
+      initializeEnhancedFeatures();
+      
+      // Add welcome message
+      setTimeout(() => {
+        showNotification('🎉 Enhanced Network Analysis System Ready! Right-click map for quick actions.', 'success');
+      }, 2000);
+    };
+  </script>
+</body>
+</html>
+      
